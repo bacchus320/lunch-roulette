@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lunch Menu Roulette</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- PWA -->
+  <meta name="theme-color" content="#ffb400" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png" />
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+      color: #222;
+    }
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 1.6rem;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 16px;
+      line-height: 1.4;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+      margin-bottom: 16px;
+    }
+    .person {
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 0.95rem;
+      background: #fafafa;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 999px;
+      font-size: 1rem;
+      font-weight: 700;
+      margin-top: 8px;
+      cursor: pointer;
+      background: #ffb400;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    .result {
+      text-align: center;
+      padding: 16px 8px 8px;
+    }
+    .result-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .menu-type {
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+    }
+    .restaurant {
+      font-size: 0.95rem;
+      color: #444;
+    }
+    .restaurant span {
+      display: block;
+    }
+    .note {
+      font-size: 0.75rem;
+      color: #999;
+      margin-top: 8px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>점심 메뉴 룰렛</h1>
+    <div class="subtitle">
+      5명이 점심 메뉴를 선택하면<br />
+      가장 많이 선택된 메뉴가 오늘의 점심으로 결정됩니다.
+    </div>
+
+    <div class="card">
+      <div class="person">
+        <label for="person1">1번 선택</label>
+        <select id="person1">
+          <option value="">-- 메뉴 선택 --</option>
+        </select>
+      </div>
+      <div class="person">
+        <label for="person2">2번 선택</label>
+        <select id="person2">
+          <option value="">-- 메뉴 선택 --</option>
+        </select>
+      </div>
+      <div class="person">
+        <label for="person3">3번 선택</label>
+        <select id="person3">
+          <option value="">-- 메뉴 선택 --</option>
+        </select>
+      </div>
+      <div class="person">
+        <label for="person4">4번 선택</label>
+        <select id="person4">
+          <option value="">-- 메뉴 선택 --</option>
+        </select>
+      </div>
+      <div class="person">
+        <label for="person5">5번 선택</label>
+        <select id="person5">
+          <option value="">-- 메뉴 선택 --</option>
+        </select>
+      </div>
+
+      <button id="rouletteButton">룰렛 돌리기</button>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none;">
+      <div class="result">
+        <div class="result-title">오늘의 점심 메뉴</div>
+        <div class="menu-type" id="resultMenuType"></div>
+        <div class="restaurant">
+          <span id="restaurantName"></span>
+          <span id="restaurantPhone"></span>
+        </div>
+      </div>
+      <div class="note">* 동률인 경우, 해당 메뉴 중에서 랜덤으로 선택됩니다.</div>
+    </div>
+  </div>
+
+  <script>
+    const menus = [
+      { id: "pork_cutlet",        label: "돈까스 (포장)",           restaurant: "수복식당",       phone: "383-2427" },
+      { id: "makguksu",           label: "막국수 (포장)",           restaurant: "골목식당",       phone: "382-9555" },
+      { id: "pork_bone_stew",     label: "스파인스튜 (배달)",       restaurant: "뚝배기나라",     phone: "382-3133" },
+      { id: "cockle_bibimbap",    label: "꼬막비빔밥 (포장)",       restaurant: "시골집",         phone: "383-7429" },
+      { id: "bibimbap_delivery",  label: "비빔밥 (배달)",           restaurant: "뉴서울감자탕",   phone: "382-1789" },
+      { id: "stone_pot_bibimbap", label: "돌솥비빔밥 (배달)",       restaurant: "뉴서울감자탕",   phone: "382-1789" },
+      { id: "dongtaetang",        label: "동태탕 (배달)",           restaurant: "한마음식당",     phone: "383-0039" },
+      { id: "steamed_seafood",    label: "해물찜 (배달)",           restaurant: "진성해물찜",     phone: "382-9993" },
+      { id: "steamed_chicken",    label: "찜닭 (배달)",             restaurant: "원주통닭",       phone: "383-5252" },
+      { id: "tray_jjajang",       label: "쟁반짜장 (배달)",         restaurant: "동원반점",       phone: "382-8889" },
+      { id: "jjamppong",          label: "짬뽕 (배달)",             restaurant: "짬뽕상회",       phone: "383-8222" },
+      { id: "tofu_sushi",         label: "유부초밥 (배달)",         restaurant: "얌얌유부도시락", phone: "383-1580" },
+      { id: "kalguksu",           label: "칼국수 (포장)",           restaurant: "홍두참깨칼국수", phone: "382-1377" }
+    ];
+
+    const selectIds = ["person1", "person2", "person3", "person4", "person5"];
+
+    function populateSelects() {
+      selectIds.forEach(id => {
+        const select = document.getElementById(id);
+        menus.forEach(menu => {
+          const opt = document.createElement("option");
+          opt.value = menu.id;
+          opt.textContent = menu.label;
+          select.appendChild(opt);
+        });
+      });
+    }
+
+    function runRoulette() {
+      const votes = {};
+      const chosenMenus = [];
+
+      selectIds.forEach(id => {
+        const value = document.getElementById(id).value;
+        if (value) {
+          chosenMenus.push(value);
+          votes[value] = (votes[value] || 0) + 1;
+        }
+      });
+
+      if (chosenMenus.length === 0) {
+        alert("최소 한 명 이상 메뉴를 선택해주세요.");
+        return;
+      }
+
+      let maxCount = 0;
+      let candidates = [];
+      for (const [menuId, count] of Object.entries(votes)) {
+        if (count > maxCount) {
+          maxCount = count;
+          candidates = [menuId];
+        } else if (count === maxCount) {
+          candidates.push(menuId);
+        }
+      }
+
+      const winnerId = candidates[Math.floor(Math.random() * candidates.length)];
+      const winnerMenu = menus.find(m => m.id === winnerId);
+
+      document.getElementById("resultMenuType").textContent = winnerMenu.label;
+      document.getElementById("restaurantName").textContent = winnerMenu.restaurant;
+      document.getElementById("restaurantPhone").textContent = `(${winnerMenu.phone})`;
+      document.getElementById("resultCard").style.display = "block";
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      populateSelects();
+      document.getElementById("rouletteButton").addEventListener("click", runRoulette);
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js").catch(err => {
+          console.log("Service worker registration failed:", err);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
