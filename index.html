@@ -5,16 +5,16 @@
   <title>Lunch Menu Roulette</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- PWA 기본 -->
+  <!-- PWA 기본 (기존 manifest, sw.js와 함께 사용 가능) -->
   <meta name="theme-color" content="#ffb400" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png" />
 
-  <!-- KakaoTalk / SNS 미리보기용 OG 태그 -->
+  <!-- KakaoTalk / SNS 미리보기용 OG 태그 (원하면 og:image URL을 절대경로로 수정해도 됨) -->
   <meta property="og:title" content="점심 메뉴 룰렛" />
-  <meta property="og:description" content="5명이 투표하면 오늘의 점심 메뉴를 자동으로 골라주는 PWA" />
+  <meta property="og:description" content="여러 사람이 투표하면 오늘의 점심 메뉴를 자동으로 골라주는 웹앱" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="icons/og-lunch.png" />
 
@@ -27,7 +27,7 @@
       color: #222;
     }
     .app {
-      max-width: 480px;
+      max-width: 540px;
       margin: 0 auto;
       padding: 16px;
     }
@@ -50,64 +50,81 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.07);
       margin-bottom: 16px;
     }
-    .person {
-      margin-bottom: 10px;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 4px;
+    .btn {
+      width: 100%;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+      box-sizing: border-box;
     }
-    @media (min-width: 420px) {
-      .person {
-        grid-template-columns: 0.7fr 1.3fr;
-        align-items: center;
-      }
+    .btn-primary {
+      background: #ffb400;
+    }
+    .btn-secondary {
+      background: #e0e0e0;
+    }
+    .btn-outline {
+      background: #fff;
+      border: 1px solid #ddd;
+    }
+    .mode-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .mode-buttons .btn {
+      flex: 1;
     }
     label {
       font-size: 0.85rem;
       font-weight: 600;
+      display: block;
+      margin-bottom: 4px;
     }
-    .name-input {
+    input[type="text"] {
       width: 100%;
-      padding: 6px 8px;
+      padding: 8px;
       border-radius: 8px;
       border: 1px solid #ccc;
-      font-size: 0.9rem;
       box-sizing: border-box;
-      margin-bottom: 4px;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
     }
     select {
       width: 100%;
       padding: 8px;
       border-radius: 8px;
       border: 1px solid #ccc;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       background: #fafafa;
       box-sizing: border-box;
+      margin-bottom: 4px;
     }
-    .btn-primary {
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 999px;
-      font-size: 1rem;
+    .info-text {
+      font-size: 0.8rem;
+      color: #777;
+      margin-top: 4px;
+    }
+    .room-code {
+      font-size: 1.2rem;
       font-weight: 700;
-      margin-top: 8px;
-      cursor: pointer;
-      background: #ffb400;
+      text-align: center;
+      margin: 8px 0;
     }
-    .btn-primary:active {
-      transform: scale(0.98);
+    .small {
+      font-size: 0.8rem;
     }
-    .btn-secondary {
-      width: 100%;
-      padding: 10px;
-      border: none;
-      border-radius: 999px;
-      font-size: 0.9rem;
-      font-weight: 600;
+    .list {
+      font-size: 0.85rem;
       margin-top: 8px;
-      cursor: pointer;
-      background: #e0e0e0;
+    }
+    .list ul {
+      padding-left: 18px;
+      margin: 4px 0 0;
     }
     .result {
       padding: 16px 8px 8px;
@@ -201,6 +218,7 @@
   </style>
 </head>
 <body>
+  <!-- 룰렛 애니메이션 오버레이 -->
   <div id="rouletteOverlay">
     <div class="roulette-box">
       <div class="roulette-pointer"></div>
@@ -213,74 +231,71 @@
   <div class="app">
     <h1>점심 메뉴 룰렛</h1>
     <div class="subtitle">
-      5명이 점심 메뉴를 선택하면<br />
-      가장 많이 선택된 메뉴가 오늘의 점심으로 결정됩니다.
+      여러 명이 메뉴를 투표하면<br />
+      가장 많이 나온 메뉴를 룰렛으로 최종 결정합니다.
     </div>
 
-    <div class="card">
-      <div class="person">
-        <div>
-          <label for="name1">1번 이름</label>
-          <input id="name1" class="name-input" type="text" placeholder="예: 홍길동 (선택사항)" />
-        </div>
-        <div>
-          <select id="person1">
-            <option value="">-- 메뉴 선택 --</option>
-          </select>
-        </div>
+    <!-- 모드 선택 카드 -->
+    <div class="card" id="modeCard">
+      <div><strong>사용 모드 선택</strong></div>
+      <div class="info-text">
+        호스트 1명만 이 앱을 사용해도 되고,<br />
+        참여자들이 직접 들어와서 투표해도 됩니다.
       </div>
-
-      <div class="person">
-        <div>
-          <label for="name2">2번 이름</label>
-          <input id="name2" class="name-input" type="text" placeholder="예: 김영희 (선택사항)" />
-        </div>
-        <div>
-          <select id="person2">
-            <option value="">-- 메뉴 선택 --</option>
-          </select>
-        </div>
+      <div class="mode-buttons">
+        <button id="hostModeBtn" class="btn btn-outline">방 만들기 (호스트)</button>
+        <button id="participantModeBtn" class="btn btn-outline">참여하기 (참가자)</button>
       </div>
-
-      <div class="person">
-        <div>
-          <label for="name3">3번 이름</label>
-          <input id="name3" class="name-input" type="text" placeholder="예: 박철수 (선택사항)" />
-        </div>
-        <div>
-          <select id="person3">
-            <option value="">-- 메뉴 선택 --</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="person">
-        <div>
-          <label for="name4">4번 이름</label>
-          <input id="name4" class="name-input" type="text" placeholder="예: 이민수 (선택사항)" />
-        </div>
-        <div>
-          <select id="person4">
-            <option value="">-- 메뉴 선택 --</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="person">
-        <div>
-          <label for="name5">5번 이름</label>
-          <input id="name5" class="name-input" type="text" placeholder="예: 최지은 (선택사항)" />
-        </div>
-        <div>
-          <select id="person5">
-            <option value="">-- 메뉴 선택 --</option>
-          </select>
-        </div>
-      </div>
-
-      <button id="rouletteButton" class="btn-primary">룰렛 돌리기</button>
     </div>
 
+    <!-- 호스트용 카드 -->
+    <div class="card" id="hostCard" style="display:none;">
+      <div><strong>호스트 모드</strong></div>
+      <div class="info-text">
+        방을 만들고, 카카오톡에 링크를 공유하세요.<br />
+        실시간으로 투표 현황을 보다가, 준비되면 룰렛을 돌립니다.
+      </div>
+
+      <button id="createRoomBtn" class="btn btn-primary">새 방 만들기</button>
+
+      <div id="hostRoomArea" style="display:none; margin-top:12px;">
+        <div class="room-code" id="hostRoomCode"></div>
+        <div class="small" id="hostInviteText"></div>
+        <button id="copyInviteBtn" class="btn btn-secondary">초대 링크 복사 (카톡에 붙여넣기)</button>
+
+        <div class="list">
+          <div><strong>실시간 투표 목록</strong></div>
+          <ul id="hostVoteList"></ul>
+        </div>
+
+        <button id="hostRouletteBtn" class="btn btn-primary">룰렛 돌리기</button>
+      </div>
+    </div>
+
+    <!-- 참가자용 카드 -->
+    <div class="card" id="participantCard" style="display:none;">
+      <div><strong>참여자 모드</strong></div>
+      <div class="info-text">
+        호스트가 알려준 방 코드로 입장해서,<br />
+        닉네임과 메뉴를 선택한 뒤 투표하세요.
+      </div>
+
+      <label for="participantRoomInput">방 코드</label>
+      <input id="participantRoomInput" type="text" placeholder="예: A3F9" />
+
+      <label for="participantNameInput">닉네임</label>
+      <input id="participantNameInput" type="text" placeholder="예: 홍길동" />
+
+      <label for="participantMenuSelect">메뉴 선택</label>
+      <select id="participantMenuSelect">
+        <option value="">-- 메뉴 선택 --</option>
+      </select>
+
+      <button id="participantVoteBtn" class="btn btn-primary">투표하기</button>
+      <div class="info-text" id="participantStatus"></div>
+    </div>
+
+    <!-- 결과 카드 (호스트 화면에서 사용) -->
     <div class="card" id="resultCard" style="display:none;">
       <div class="result">
         <div class="result-title">오늘의 점심 메뉴</div>
@@ -293,17 +308,50 @@
         <div class="voters-title">참여자 목록</div>
         <ul id="voterList"></ul>
 
-        <button id="shareButton" class="btn-secondary">결과를 카카오톡에 복사</button>
+        <button id="shareButton" class="btn btn-secondary">결과를 카카오톡에 복사</button>
+        <button id="resetButton" class="btn btn-secondary">다시하기 (같은 방에서 새 투표)</button>
       </div>
       <div class="note">* 동률인 경우, 해당 메뉴 중에서 랜덤으로 선택됩니다.</div>
     </div>
   </div>
 
-  <script>
+  <!-- Firebase + App 로직 -->
+  <script type="module">
+    // ===== Firebase SDK 로드 =====
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      serverTimestamp,
+      collection,
+      addDoc,
+      onSnapshot,
+      query,
+      deleteDoc,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+    // TODO: 여기에 본인 Firebase 콘솔에서 받은 설정을 넣으세요.
+    const firebaseConfig = {
+      apiKey: "AIzaSyBprWpBJZ1dIHfoYPMTOWqtqxN4o8lf4mM",
+  authDomain: "lunch-roulette-661e0.firebaseapp.com",
+  projectId: "lunch-roulette-661e0",
+  storageBucket: "lunch-roulette-661e0.firebasestorage.app",
+  messagingSenderId: "687591851946",
+  appId: "1:687591851946:web:97d069c28a69a309450dd3",
+  measurementId: "G-B9LGL1D4WF"
+      // storageBucket, messagingSenderId, appId 등도 있으면 추가
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ===== 앱 공통 데이터 =====
     const menus = [
       { id: "pork_cutlet",        label: "돈까스 (포장)",           restaurant: "수복식당",       phone: "383-2427" },
       { id: "makguksu",           label: "막국수 (포장)",           restaurant: "골목식당",       phone: "382-9555" },
-      { id: "pork_bone_stew",     label: "스파인스튜 (배달)",       restaurant: "뚝배기나라",     phone: "382-3133" },
+      { id: "pork_bone_stew",     label: "등뼈찜 (배달)",       restaurant: "뚝배기나라",     phone: "382-3133" },
       { id: "cockle_bibimbap",    label: "꼬막비빔밥 (포장)",       restaurant: "시골집",         phone: "383-7429" },
       { id: "bibimbap_delivery",  label: "비빔밥 (배달)",           restaurant: "뉴서울감자탕",   phone: "382-1789" },
       { id: "stone_pot_bibimbap", label: "돌솥비빔밥 (배달)",       restaurant: "뉴서울감자탕",   phone: "382-1789" },
@@ -312,55 +360,151 @@
       { id: "steamed_chicken",    label: "찜닭 (배달)",             restaurant: "원주통닭",       phone: "383-5252" },
       { id: "tray_jjajang",       label: "쟁반짜장 (배달)",         restaurant: "동원반점",       phone: "382-8889" },
       { id: "jjamppong",          label: "짬뽕 (배달)",             restaurant: "짬뽕상회",       phone: "383-8222" },
-      { id: "tofu_sushi",         label: "유부초밥 (배달)",         restaurant: "얌얌유부도시락", phone: "383-1580" },
+      { id: "tofu_sushi",         label: "유부초밥 (배달)",         restaurant: "냠냠유부도시락", phone: "383-1580" },
       { id: "kalguksu",           label: "칼국수 (포장)",           restaurant: "홍두참깨칼국수", phone: "382-1377" }
     ];
 
-    const selectIds = ["person1", "person2", "person3", "person4", "person5"];
-    const nameIds = ["name1", "name2", "name3", "name4", "name5"];
+    // GitHub Pages 기준 URL (초대 링크 용)
+    const HOST_BASE_URL = "https://YOUR-GITHUB-ID.github.io/lunch-roulette/";
 
+    // ===== DOM 요소 =====
+    const modeCard = document.getElementById("modeCard");
+    const hostCard = document.getElementById("hostCard");
+    const participantCard = document.getElementById("participantCard");
+
+    const hostModeBtn = document.getElementById("hostModeBtn");
+    const participantModeBtn = document.getElementById("participantModeBtn");
+
+    const createRoomBtn = document.getElementById("createRoomBtn");
+    const hostRoomArea = document.getElementById("hostRoomArea");
+    const hostRoomCodeEl = document.getElementById("hostRoomCode");
+    const hostInviteTextEl = document.getElementById("hostInviteText");
+    const copyInviteBtn = document.getElementById("copyInviteBtn");
+    const hostVoteList = document.getElementById("hostVoteList");
+    const hostRouletteBtn = document.getElementById("hostRouletteBtn");
+
+    const participantRoomInput = document.getElementById("participantRoomInput");
+    const participantNameInput = document.getElementById("participantNameInput");
+    const participantMenuSelect = document.getElementById("participantMenuSelect");
+    const participantVoteBtn = document.getElementById("participantVoteBtn");
+    const participantStatus = document.getElementById("participantStatus");
+
+    const rouletteOverlay = document.getElementById("rouletteOverlay");
+    const rouletteText = document.getElementById("rouletteText");
+
+    const resultCard = document.getElementById("resultCard");
+    const resultMenuTypeEl = document.getElementById("resultMenuType");
+    const restaurantNameEl = document.getElementById("restaurantName");
+    const restaurantPhoneEl = document.getElementById("restaurantPhone");
+    const voterListEl = document.getElementById("voterList");
+    const shareButton = document.getElementById("shareButton");
+    const resetButton = document.getElementById("resetButton");
+
+    let currentRoomId = null;
+    let unsubscribeVotes = null;
+    let currentVotesCache = [];
     let lastShareText = "";
     let isSpinning = false;
 
-    function populateSelects() {
-      selectIds.forEach(id => {
-        const select = document.getElementById(id);
-        menus.forEach(menu => {
-          const opt = document.createElement("option");
-          opt.value = menu.id;
-          opt.textContent = menu.label;
-          select.appendChild(opt);
-        });
+    // ===== 공통 함수들 =====
+    function populateMenuSelect(selectEl) {
+      menus.forEach(menu => {
+        const opt = document.createElement("option");
+        opt.value = menu.id;
+        opt.textContent = menu.label;
+        selectEl.appendChild(opt);
       });
     }
 
-    function runRoulette() {
-      if (isSpinning) return;
+    function getMenuById(id) {
+      return menus.find(m => m.id === id);
+    }
 
-      const votes = {};
-      const chosenDetails = [];
+    function generateRoomId() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let id = "";
+      for (let i = 0; i < 4; i++) {
+        id += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return id;
+    }
 
-      selectIds.forEach((sid, index) => {
-        const menuId = document.getElementById(sid).value;
-        const name = document.getElementById(nameIds[index]).value.trim();
-        if (menuId) {
-          const menu = menus.find(m => m.id === menuId);
-          chosenDetails.push({
-            name: name || `참여자${index + 1}`,
-            menu
-          });
-          votes[menuId] = (votes[menuId] || 0) + 1;
-        }
+    async function createRoom() {
+      const roomId = generateRoomId();
+      const roomRef = doc(db, "rooms", roomId);
+      await setDoc(roomRef, {
+        status: "open",
+        createdAt: serverTimestamp(),
+        resultMenuId: null,
+        resultAt: null
       });
 
-      if (chosenDetails.length === 0) {
-        alert("최소 한 명 이상 메뉴를 선택해주세요.");
+      currentRoomId = roomId;
+      showHostRoom(roomId);
+      subscribeRoomVotes(roomId);
+    }
+
+    function showHostRoom(roomId) {
+      hostRoomArea.style.display = "block";
+      hostRoomCodeEl.textContent = `방 코드: ${roomId}`;
+      const inviteUrl = `${HOST_BASE_URL}?room=${roomId}`;
+      hostInviteTextEl.textContent = `참여 링크: ${inviteUrl}`;
+      hostInviteTextEl.dataset.inviteUrl = inviteUrl;
+    }
+
+    function subscribeRoomVotes(roomId) {
+      if (unsubscribeVotes) {
+        unsubscribeVotes();
+      }
+      const votesRef = collection(db, "rooms", roomId, "votes");
+      const q = query(votesRef);
+      unsubscribeVotes = onSnapshot(q, snapshot => {
+        const votes = [];
+        snapshot.forEach(docSnap => votes.push({ id: docSnap.id, ...docSnap.data() }));
+        currentVotesCache = votes;
+        renderHostVotes(votes);
+      });
+    }
+
+    function renderHostVotes(votes) {
+      hostVoteList.innerHTML = "";
+      votes.forEach(v => {
+        const li = document.createElement("li");
+        const menu = getMenuById(v.menuId);
+        li.textContent = `${v.nickname || "익명"}: ${menu ? menu.label : "(삭제된 메뉴)"}`;
+        hostVoteList.appendChild(li);
+      });
+    }
+
+    async function submitVote(roomId, nickname, menuId) {
+      if (!roomId || !nickname || !menuId) {
+        alert("방 코드, 닉네임, 메뉴를 모두 입력해주세요.");
+        return;
+      }
+      const votesRef = collection(db, "rooms", roomId, "votes");
+      await addDoc(votesRef, {
+        nickname,
+        menuId,
+        createdAt: serverTimestamp()
+      });
+      participantStatus.textContent = "투표가 완료되었습니다! (다시 투표하면 중복으로 기록될 수 있습니다)";
+    }
+
+    function runRouletteWithVotes() {
+      const votes = currentVotesCache;
+      if (!votes.length) {
+        alert("아직 투표가 없습니다.");
         return;
       }
 
+      const countMap = {};
+      votes.forEach(v => {
+        countMap[v.menuId] = (countMap[v.menuId] || 0) + 1;
+      });
+
       let maxCount = 0;
       let candidates = [];
-      for (const [menuId, count] of Object.entries(votes)) {
+      for (const [menuId, count] of Object.entries(countMap)) {
         if (count > maxCount) {
           maxCount = count;
           candidates = [menuId];
@@ -370,43 +514,50 @@
       }
 
       const winnerId = candidates[Math.floor(Math.random() * candidates.length)];
-      const winnerMenu = menus.find(m => m.id === winnerId);
+      const winnerMenu = getMenuById(winnerId);
+
+      const chosenDetails = votes.map((v, idx) => ({
+        name: v.nickname || `참여자${idx + 1}`,
+        menu: getMenuById(v.menuId)
+      }));
 
       startRouletteAnimation(winnerMenu, chosenDetails);
     }
 
     function startRouletteAnimation(winnerMenu, chosenDetails) {
+      if (!winnerMenu) {
+        alert("승자 메뉴를 찾을 수 없습니다.");
+        return;
+      }
       isSpinning = true;
-      const overlay = document.getElementById("rouletteOverlay");
-      const textEl = document.getElementById("rouletteText");
-      overlay.style.display = "flex";
+      rouletteOverlay.style.display = "flex";
 
-      let idx = 0;
       const labels = menus.map(m => m.label);
+      let idx = 0;
       const interval = setInterval(() => {
-        textEl.textContent = labels[idx % labels.length];
+        rouletteText.textContent = labels[idx % labels.length];
         idx++;
       }, 100);
 
       setTimeout(() => {
         clearInterval(interval);
-        overlay.style.display = "none";
+        rouletteOverlay.style.display = "none";
         isSpinning = false;
         showResult(winnerMenu, chosenDetails);
       }, 1500);
     }
 
     function showResult(winnerMenu, chosenDetails) {
-      document.getElementById("resultMenuType").textContent = winnerMenu.label;
-      document.getElementById("restaurantName").textContent = winnerMenu.restaurant;
-      document.getElementById("restaurantPhone").textContent = `(${winnerMenu.phone})`;
+      resultMenuTypeEl.textContent = winnerMenu.label;
+      restaurantNameEl.textContent = winnerMenu.restaurant;
+      restaurantPhoneEl.textContent = `(${winnerMenu.phone})`;
 
-      const listEl = document.getElementById("voterList");
-      listEl.innerHTML = "";
+      voterListEl.innerHTML = "";
       chosenDetails.forEach(detail => {
+        if (!detail.menu) return;
         const li = document.createElement("li");
         li.textContent = `${detail.name}: ${detail.menu.label}`;
-        listEl.appendChild(li);
+        voterListEl.appendChild(li);
       });
 
       const lines = [];
@@ -415,11 +566,12 @@
       lines.push("");
       lines.push("참여자:");
       chosenDetails.forEach(detail => {
+        if (!detail.menu) return;
         lines.push(`- ${detail.name}: ${detail.menu.label}`);
       });
       lastShareText = lines.join("\n");
 
-      document.getElementById("resultCard").style.display = "block";
+      resultCard.style.display = "block";
     }
 
     async function handleShareCopy() {
@@ -427,33 +579,130 @@
         alert("먼저 룰렛을 돌려 결과를 만든 뒤에 공유해주세요.");
         return;
       }
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        try {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
           await navigator.clipboard.writeText(lastShareText);
           alert("결과가 클립보드에 복사되었습니다. 카카오톡 방에 붙여넣기 해주세요!");
-          return;
-        } catch (e) {
-          console.log("Clipboard write failed:", e);
+        } else {
+          throw new Error("Clipboard API not available");
         }
-      }
-      const temp = document.createElement("textarea");
-      temp.value = lastShareText;
-      document.body.appendChild(temp);
-      temp.select();
-      try {
-        document.execCommand("copy");
-        alert("결과가 클립보드에 복사되었습니다. 카카오톡 방에 붙여넣기 해주세요!");
       } catch (e) {
-        alert("자동 복사가 지원되지 않습니다. 아래 내용을 직접 복사해주세요.\n\n" + lastShareText);
+        const temp = document.createElement("textarea");
+        temp.value = lastShareText;
+        document.body.appendChild(temp);
+        temp.select();
+        try {
+          document.execCommand("copy");
+          alert("결과가 클립보드에 복사되었습니다. 카카오톡 방에 붙여넣기 해주세요!");
+        } catch (err) {
+          alert("자동 복사가 지원되지 않습니다. 아래 내용을 직접 복사해주세요.\n\n" + lastShareText);
+        }
+        document.body.removeChild(temp);
       }
-      document.body.removeChild(temp);
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      populateSelects();
-      document.getElementById("rouletteButton").addEventListener("click", runRoulette);
-      document.getElementById("shareButton").addEventListener("click", handleShareCopy);
+    async function resetGameSameRoom() {
+      if (!currentRoomId) {
+        resultCard.style.display = "none";
+        return;
+      }
+      // 해당 방의 votes 전체 삭제 (간단한 방법)
+      const votesRef = collection(db, "rooms", currentRoomId, "votes");
+      const snapshot = await getDocs(votesRef);
+      const deletions = [];
+      snapshot.forEach(docSnap => {
+        deletions.push(deleteDoc(docSnap.ref));
+      });
+      await Promise.all(deletions);
 
+      currentVotesCache = [];
+      renderHostVotes([]);
+      resultCard.style.display = "none";
+      lastShareText = "";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function applyUrlRoomParam() {
+      const url = new URL(window.location.href);
+      const roomParam = url.searchParams.get("room");
+      if (roomParam) {
+        participantRoomInput.value = roomParam.toUpperCase();
+      }
+    }
+
+    function showHostMode() {
+      hostCard.style.display = "block";
+      participantCard.style.display = "none";
+    }
+
+    function showParticipantMode() {
+      hostCard.style.display = "none";
+      participantCard.style.display = "block";
+    }
+
+    function copyInviteLink() {
+      const inviteUrl = hostInviteTextEl.dataset.inviteUrl;
+      if (!inviteUrl) return;
+      const text = `점심 메뉴 룰렛 방에 참여해주세요!\n${inviteUrl}`;
+      navigator.clipboard?.writeText(text).then(() => {
+        alert("초대 링크가 복사되었습니다. 카카오톡에 붙여넣기 하세요!");
+      }).catch(() => {
+        alert("복사가 안 되면, 아래 링크를 직접 복사해주세요.\n" + inviteUrl);
+      });
+    }
+
+    // ===== 초기 DOM 설정 =====
+    document.addEventListener("DOMContentLoaded", () => {
+      // 메뉴 셀렉트 채우기
+      populateMenuSelect(participantMenuSelect);
+
+      // URL에 ?room= 가 있으면 참가자 모드에서 자동 채우기
+      applyUrlRoomParam();
+
+      // 모드 버튼
+      hostModeBtn.addEventListener("click", showHostMode);
+      participantModeBtn.addEventListener("click", showParticipantMode);
+
+      // 호스트: 방 만들기
+      createRoomBtn.addEventListener("click", () => {
+        createRoom().catch(err => {
+          console.error(err);
+          alert("방 생성 중 오류가 발생했습니다.");
+        });
+      });
+
+      // 호스트: 초대 링크 복사
+      copyInviteBtn.addEventListener("click", copyInviteLink);
+
+      // 호스트: 룰렛 돌리기
+      hostRouletteBtn.addEventListener("click", () => {
+        if (isSpinning) return;
+        runRouletteWithVotes();
+      });
+
+      // 참가자: 투표하기
+      participantVoteBtn.addEventListener("click", () => {
+        const roomId = participantRoomInput.value.trim().toUpperCase();
+        const nickname = participantNameInput.value.trim();
+        const menuId = participantMenuSelect.value;
+        submitVote(roomId, nickname, menuId).catch(err => {
+          console.error(err);
+          alert("투표 중 오류가 발생했습니다. 방 코드가 맞는지 확인해주세요.");
+        });
+      });
+
+      // 결과 공유
+      shareButton.addEventListener("click", handleShareCopy);
+
+      // 같은 방에서 다시하기
+      resetButton.addEventListener("click", () => {
+        resetGameSameRoom().catch(err => {
+          console.error(err);
+          alert("초기화 중 오류가 발생했습니다.");
+        });
+      });
+
+      // PWA 서비스 워커 (이미 sw.js가 있다면 그대로 작동)
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js").catch(err => {
           console.log("Service worker registration failed:", err);
