@@ -333,19 +333,17 @@
     } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
     // TODO: 여기에 본인 Firebase 콘솔에서 받은 설정을 넣으세요.
-    const firebaseConfig = {
-      apiKey: "AIzaSyBprWpBJZ1dIHfoYPMTOWqtqxN4o8lf4mM",
+   const firebaseConfig = {
+  apiKey: "AIzaSyBprWpBJZ1dIHfoYPMTOWqtqxN4o8lf4mM",
   authDomain: "lunch-roulette-661e0.firebaseapp.com",
   projectId: "lunch-roulette-661e0",
   storageBucket: "lunch-roulette-661e0.firebasestorage.app",
   messagingSenderId: "687591851946",
   appId: "1:687591851946:web:97d069c28a69a309450dd3",
   measurementId: "G-B9LGL1D4WF"
-      // storageBucket, messagingSenderId, appId 등도 있으면 추가
-    };
-
+};
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const analytics = getFirestore(app);
 
     // ===== 앱 공통 데이터 =====
     const menus = [
